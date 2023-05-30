@@ -264,8 +264,11 @@ send_file() {
 	log "content-type: $content_type"
 	upload_file "$FILE" "$content_type" "$filename"
 	uri=$(jq -r .content_uri <<<"$response")
-
-	data="{\"body\":`escape "$filename"`, \"msgtype\":\"$FILE_TYPE\", \"filename\":`escape "$filename"`, \"url\":\"$uri\"}"
+ blurhash=$(blurhash_encoder 4 3 "$FILE")
+ imgwidth=$(identify -format "%w" "$FILE")
+ imgheight=$(identify -format "%h" "$FILE")
+	
+	data="{\"info\":{\"mimetype\":\"$content_type\", \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\"}, \"body\":`escape "$filename"`, \"msgtype\":\"$FILE_TYPE\", \"filename\":`escape "$filename"`, \"url\":\"$uri\"}"
 	_send_message "$data"
 }
 
