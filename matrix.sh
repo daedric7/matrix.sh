@@ -267,15 +267,21 @@ send_file() {
 	log "filename: $filename"
 	content_type=$(file --brief --mime-type "$FILE")
 	echo $content_type
- blurhash=$(/usr/local/bin/blurhash_encoder 4 3 "$FILE")
-	imgwidth=$(identify -format "%w" "$FILE"[0])
-	imgheight=$(identify -format "%h" "$FILE"[0])
+ if (( $FILE_TYPE == "m.image" )); then
+		blurhash=$(/usr/local/bin/blurhash_encoder 4 3 "$FILE")
+		imgwidth=$(identify -format "%w" "$FILE"[0])
+		imgheight=$(identify -format "%h" "$FILE"[0])
+	fi
 
 	log "content-type: $content_type"
 	upload_file "$FILE" "$content_type" "$filename"
 	uri=$(jq -r .content_uri <<<"$response")
 
-	data="{\"info\":{\"mimetype\":\"$content_type\", \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+	if (( $FILE_TYPE == "m.image" )); then
+		data="{\"info\":{\"mimetype\":\"$content_type\", \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+	else
+	 data="{\"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+	fi
 	_send_message "$data"
 }
 
