@@ -63,14 +63,14 @@ die() {
 }
 
 log() {
-	"$LOG" && echo $1
+	"$LOG" && echo "$1"
 }
 
 get() {
 	url="$1"
 	shift
 	log "GET $url"
-	response=`_curl "$@" "${MATRIX_HOMESERVER}${url}"`
+	response=$(_curl "$@" "${MATRIX_HOMESERVER}${url}")
 }
 
 query() {
@@ -78,11 +78,12 @@ query() {
 	data="$2"
 	type="$3"
 	log "$type $url"
-	response=$( _curl -X$type -H "Content-Type: application/json" --data "$data" "${MATRIX_HOMESERVER}${url}" )
-	if [ ! `jq -r .errcode <<<"$response"` == "null" ]; then
+	echo $data
+	response=$( _curl -X"$type" -H "Content-Type: application/json" --data "$data" "${MATRIX_HOMESERVER}${url}" )
+	if [ ! $(jq -r .errcode <<<"$response") == "null" ]; then
 		echo
 		>&2 echo "An error occurred. The matrix server responded with:"
-		>&2 echo "`jq -r .errcode <<<"$response"`: `jq -r .error <<<"$response"`"
+		>&2 echo "$(jq -r .errcode <<<"$response"): $(jq -r .error <<<"$response")"
 		#>&2 echo "Following request was sent to ${url}:"
 		#>&2 jq . <<<"$data"
 		exit 1
@@ -98,6 +99,7 @@ put() {
 }
 
 upload_file() {
+        echo "Uploading..."
 	file="$1"
 	content_type="$2"
 	filename="$3"
@@ -216,11 +218,12 @@ change_name() {
 _send_message() {
 	data="$1"
 	txn=`date +%s%N`
-	put "/_matrix/client/r0/rooms/$MATRIX_ROOM_ID/send/m.room.message/$txn" "$data"
+	put "/_matrix/client/v3/rooms/$MATRIX_ROOM_ID/send/m.room.message/$txn" "$data"
 }
 
 send_message() {
 	# Get the text. Try the last variable
+	echo "Sending message..."
 	text="$1"
 	[ "$text" = "-" ] && text=$(</dev/stdin)
 	if $PRE; then
@@ -243,10 +246,12 @@ send_message() {
 }
 
 send_file() {
+	echo "Sending file..."
 	[ ! -e "$FILE" ] && die "File $FILE does not exist."
 
 	# Query max filesize from server
 	get "/_matrix/media/r0/config"
+	echo $response
 	max_size=$(jq -r ".[\"m.upload.size\"]" <<<"$response")
 	# Cross platform check (https://en.wikipedia.org/wiki/Uname)
 	case "$(uname -s)" in
@@ -261,14 +266,16 @@ send_file() {
 	filename=$(basename "$FILE")
 	log "filename: $filename"
 	content_type=$(file --brief --mime-type "$FILE")
+	echo $content_type
+        blurhash=$(/usr/local/bin/blurhash_encoder 4 3 "$FILE")
+	imgwidth=$(identify -format "%w" "$FILE"[0])
+	imgheight=$(identify -format "%h" "$FILE"[0])
+
 	log "content-type: $content_type"
 	upload_file "$FILE" "$content_type" "$filename"
 	uri=$(jq -r .content_uri <<<"$response")
- blurhash=$(blurhash_encoder 4 3 "$FILE")
- imgwidth=$(identify -format "%w" "$FILE")
- imgheight=$(identify -format "%h" "$FILE")
-	
-	data="{\"info\":{\"mimetype\":\"$content_type\", \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\"}, \"body\":`escape "$filename"`, \"msgtype\":\"$FILE_TYPE\", \"filename\":`escape "$filename"`, \"url\":\"$uri\"}"
+
+	data="{\"info\":{\"mimetype\":\"$content_type\", \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
 	_send_message "$data"
 }
 
