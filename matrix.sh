@@ -271,6 +271,8 @@ send_file() {
 		blurhash=$(/usr/local/bin/blurhash_encoder 4 3 "$FILE")
 		imgwidth=$(identify -format "%w" "$FILE"[0])
 		imgheight=$(identify -format "%h" "$FILE"[0])
+		tmbwidth=800
+		tmbheight=$(( (imgheight * tmbwidth) / imgwidth ))
 	fi
 
 	log "content-type: $content_type"
@@ -278,7 +280,8 @@ send_file() {
 	uri=$(jq -r .content_uri <<<"$response")
 
 	if [[ $FILE_TYPE == "m.image" ]]; then
-		data="{\"info\":{\"mimetype\":\"$content_type\", \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+		#data="{\"info\":{\"mimetype\":\"$content_type\", \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+		data={\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\": { \"w\":$tmbwidth , \"h\":$tmbheight, \"mimetype\":$content_type}, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}
 	else
 	 data="{\"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
 	fi
