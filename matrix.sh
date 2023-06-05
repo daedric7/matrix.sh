@@ -267,7 +267,7 @@ send_file() {
 	log "filename: $filename"
 	content_type=$(file --brief --mime-type "$FILE")
 	echo $content_type
- if [[ $FILE_TYPE == "m.image" ]]; then
+	if [[ $FILE_TYPE == "m.image" ]]; then
 		blurhash=$(/usr/local/bin/blurhash_encoder 4 3 "$FILE")
 		imgwidth=$(identify -format "%w" "$FILE"[0])
 		imgheight=$(identify -format "%h" "$FILE"[0])
