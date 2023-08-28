@@ -22,7 +22,7 @@ wrapped in &lt;pre&gt; tags.
 
     Something like `sudo apt-get install curl jq`.
 
-* You'll need more tools, namely blurhash and imagemagick.
+* You'll need more tools, namely blurhash ( https://github.com/woltapp/blurhash ) and imagemagick.
 
 * Use it to log in. See Usage.
 
