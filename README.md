@@ -21,6 +21,9 @@ wrapped in &lt;pre&gt; tags.
     * `coreutils` (required for `du -b`)
 
     Something like `sudo apt-get install curl jq`.
+
+* You'll need more tools, namely blurhash and imagemagick.
+
 * Use it to log in. See Usage.
 
 ## Usage
