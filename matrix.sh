@@ -222,6 +222,7 @@ change_name() {
 
 _send_message() {
         data="$1"
+        echo $data | jq
         txn=`date +%s%N`
         put "/_matrix/client/v3/rooms/$MATRIX_ROOM_ID/send/m.room.message/$txn" "$data"
 }
@@ -285,7 +286,7 @@ send_file() {
                         imgheight=$(identify -format "%h" "$FILE")
                         log "$imgwidth x $imgheight"
                 fi
-                tmbwidth=800
+                tmbwidth=200
                 tmbheight=$(( (imgheight * tmbwidth) / imgwidth ))
                 tmbsize=$(( (tmbwidth * size) / imgwidth ))
                 curdir=$(pwd)
@@ -317,7 +318,7 @@ send_file() {
                 echo $vidduration
 
                 #calculate thumbnail info
-                tmbwidth=800
+                tmbwidth=200
                 tmbheight=$(( (vidheight * tmbwidth) / vidwidth ))
                 tmbsize=$(( (tmbwidth * size) / vidwidth ))
                 curdir=$(pwd)
@@ -343,16 +344,23 @@ send_file() {
         upload_file "$FILE" "$content_type" "$filename"
         uri=$(jq -r .content_uri <<<"$response")
 
+        #Default data
+        data="{\"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+
+        #If it's a image...
         if [[ $FILE_TYPE == "m.image" ]]; then
                 data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+                echo $data | jq
                 rm "/tmp/$tmbname"
         fi
+
+        #If it's a video...
         if [[ $FILE_TYPE == "m.video" ]]; then
             data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"image\/jpeg\", \"size\":$tmbsize }, \"size\":$size, \"w\":$vidwidth, \"h\":$vidheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
-            #rm "/tmp/$tmbname"
-        else
-                data="{\"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+            rm "/tmp/$tmbname"
         fi
+
+        #Send it.
         _send_message "$data"
 }
 
