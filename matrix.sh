@@ -84,7 +84,7 @@ query() {
         type="$3"
         log "$type $url"
         response=$( _curl -X"$type" -H "Content-Type: application/json" --data "$data" "${MATRIX_HOMESERVER}${url}" )
-        echo $response
+        #echo $response
         if [ ! $(jq -r .errcode <<<"$response") == "null" ]; then
                 echo
                 >&2 echo "An error occurred. The matrix server responded with:"
@@ -222,7 +222,6 @@ change_name() {
 
 _send_message() {
         data="$1"
-        echo $data | jq
         txn=`date +%s%N`
         put "/_matrix/client/v3/rooms/$MATRIX_ROOM_ID/send/m.room.message/$txn" "$data"
 }
@@ -248,7 +247,6 @@ send_message() {
         else
                 data="{\"body\": $text, \"msgtype\":\"m.text\"}"
         fi
-        echo $data
         _send_message "$data"
 }
 
@@ -273,6 +271,9 @@ send_file() {
         extension="${filename##*.}"
         log "filename: $filename $extension"
         content_type=$(file --brief --mime-type "$FILE")
+        original_content_type=$content_type
+
+        #Thumbnails
         if [[ $FILE_TYPE == "m.image" ]]; then
                 #blurhash=$(/usr/local/bin/blurhash_encoder 4 3 "$FILE")
                 if [[ $extension == "gif" ]]; then
@@ -280,28 +281,47 @@ send_file() {
                         imgwidth=$(identify -format "%w" "$FILE"[0])
                         imgheight=$(identify -format "%h" "$FILE"[0])
                         log "$imgwidth x $imgheight"
+                        tmbwidth=300
+                        tmbheight=$(( (imgheight * tmbwidth) / imgwidth ))
+                        tmbsize=$(( (tmbwidth * size) / imgwidth ))
+                        curdir=$(pwd)
+                        #cd /tmp
+                        tmbname="thumb-${filename}"                                                                                                             #Generate a thumbname from the filename
+                        convert $FILE -thumbnail $tmbwidth\x$tmbheight -quality 70 /tmp/$tmbname                                                                #Convert the file to a thumb
+                        blurhash=$(/usr/local/bin/blurhash_encoder 4 3 /tmp/$tmbname)                                                                           #Generate blurhash from thumb
+                        ffmpeg -loglevel fatal -i /tmp/$tmbname -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" /tmp/$tmbname.mp4  #Convert gif thumbnail to mp4 (for size?)
+                        tmbname=${tmbname}.mp4
+                        tmb_content_type='video/mp4'
+                        log "Uploading thumbnail... blurhash is $blurhash, content type is $tmb_content_type"
+                        upload_file "/tmp/$tmbname" "$tmb_content_type" "$tmbname"
+                        tmburi=$(jq -r .content_uri <<<"$response")
+                        filename=$(basename "$FILE")
+                        log "$FILE has been thumbnailed to $tmbwidth X $tmbheight, and named as $tmbname"
+                        log "Response was: $response"
+                        log "$FILE will be uploaded as $filename, it has $imgwidth X $imgheight"
                 else
                         log "NOT GIF"
                         imgwidth=$(identify -format "%w" "$FILE")
                         imgheight=$(identify -format "%h" "$FILE")
                         log "$imgwidth x $imgheight"
+                        tmbwidth=300
+                        tmbheight=$(( (imgheight * tmbwidth) / imgwidth ))
+                        tmbsize=$(( (tmbwidth * size) / imgwidth ))
+                        curdir=$(pwd)
+                        #cd /tmp
+                        tmbname="thumb-${filename}"                                                                                                             #Generate a thumbname from the filename
+                        convert $FILE -thumbnail $tmbwidth\x$tmbheight -quality 70 /tmp/$tmbname                                                                #Convert the file to a thumb
+                        blurhash=$(/usr/local/bin/blurhash_encoder 4 3 /tmp/$tmbname)                                                                           #Generate blurhash from thumb
+                        tmb_content_type=$content_type
+                        log "Uploading thumbnail... blurhash is $blurhash, content type is $tmb_content_type"
+                        upload_file "/tmp/$tmbname" "$tmp_content_type" "$tmbname"
+                        tmburi=$(jq -r .content_uri <<<"$response")
+                        filename=$(basename "$FILE")
+                        log "$FILE has been thumbnailed to $tmbwidth X $tmbheight, and named as $tmbname"
+                        log "Response was: $response"
+                        log "$FILE will be uploaded as $filename, it has $imgwidth X $imgheight"
+
                 fi
-                tmbwidth=200
-                tmbheight=$(( (imgheight * tmbwidth) / imgwidth ))
-                tmbsize=$(( (tmbwidth * size) / imgwidth ))
-                curdir=$(pwd)
-                #cd /tmp
-                tmbname="${filename}-thumb"
-                convert $FILE -thumbnail $tmbwidth\x$tmbheight -quality 70 /tmp/$tmbname
-                blurhash=$(/usr/local/bin/blurhash_encoder 4 3 /tmp/$tmbname)
-                log "Uploading thumbnail... blurhash is $blurhash"
-                upload_file "/tmp/$tmbname" "$content_type" "$tmbname"
-                echo $response
-                tmburi=$(jq -r .content_uri <<<"$response")
-                filename=$(basename "$FILE")
-                log "$FILE has been thumbnailed to $tmbwidth X $tmbheight, and named as $tmbname"
-                log "Response was: $response"
-                log "$FILE will be uploaded as $filename, it has $imgwidth X $imgheight"
         fi
 
         if [[ $FILE_TYPE == "m.video" ]] ; then
@@ -339,9 +359,9 @@ send_file() {
                 filename=$(basename "$FILE")
         fi
 
-        log "content-type: $content_type"
+        log "content-type: $original_content_type"
         log "filename: $filename"
-        upload_file "$FILE" "$content_type" "$filename"
+        upload_file "$FILE" "$original_content_type" "$filename"
         uri=$(jq -r .content_uri <<<"$response")
 
         #Default data
@@ -349,7 +369,7 @@ send_file() {
 
         #If it's a image...
         if [[ $FILE_TYPE == "m.image" ]]; then
-                data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+                data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
                 echo $data | jq
                 rm "/tmp/$tmbname"
         fi
