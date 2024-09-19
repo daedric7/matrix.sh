@@ -365,12 +365,12 @@ send_file() {
         uri=$(jq -r .content_uri <<<"$response")
 
         #Default data
-        data="{\"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+        data="{\"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"url\":\"$uri\", \"info\":{\"mimetype\":\"$content_type\", \"size\":$size}}"
+        echo $data
 
         #If it's a image...
         if [[ $FILE_TYPE == "m.image" ]]; then
                 data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
-                echo $data | jq
                 rm "/tmp/$tmbname"
         fi
 
