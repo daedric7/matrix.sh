@@ -82,15 +82,16 @@ query() {
         url="$1"
         data="$2"
         type="$3"
-        log "$type $url"
+        log ">>>>> $type $url"
+        log ">>>>> $data"
         response=$( _curl -X"$type" -H "Content-Type: application/json" --data "$data" "${MATRIX_HOMESERVER}${url}" )
-        #echo $response
+        echo $response
         if [ ! $(jq -r .errcode <<<"$response") == "null" ]; then
                 echo
                 >&2 echo "An error occurred. The matrix server responded with:"
                 >&2 echo "$(jq -r .errcode <<<"$response"): $(jq -r .error <<<"$response")"
-                #>&2 echo "Following request was sent to ${url}:"
-                #>&2 jq . <<<"$data"
+                >&2 echo "Following request was sent to ${url}:"
+                >&2 jq . <<<"$data"
                 exit 1
         fi
 }
@@ -107,8 +108,8 @@ upload_file() {
         file="$1"
         content_type="$2"
         filename="$3"
-        echo "Uploading $file ... named as $filename"
-        response=$( _curl -XPOST --data-binary "@$file" -H "Content-Type: $content_type" "${MATRIX_HOMESERVER}/_matrix/media/r0/upload?filename=${filename}" )
+        echo "Uploading $file ... named as $filename with content_type as $content_type"
+        response=$( _curl -XPOST -H "Content-Type: $content_type" --data-binary "@$file"  "${MATRIX_HOMESERVER}/_matrix/media/r0/upload?filename=${filename}" )
 }
 
 escape() {
@@ -252,6 +253,7 @@ send_message() {
 
 send_file() {
         echo "Sending file... $FILE"
+        echo "Text is... $TEXT"
         [ ! -e "$FILE" ] && die "File $FILE does not exist."
 
         # Query max filesize from server
@@ -313,8 +315,9 @@ send_file() {
                         convert $FILE -thumbnail $tmbwidth\x$tmbheight -quality 70 /tmp/$tmbname                                                                #Convert the file to a thumb
                         blurhash=$(/usr/local/bin/blurhash_encoder 4 3 /tmp/$tmbname)                                                                           #Generate blurhash from thumb
                         tmb_content_type=$content_type
+                        log "Content Type: $tmb_content_type"
                         log "Uploading thumbnail... blurhash is $blurhash, content type is $tmb_content_type"
-                        upload_file "/tmp/$tmbname" "$tmp_content_type" "$tmbname"
+                        upload_file "/tmp/$tmbname" "$tmb_content_type" "$tmbname"
                         tmburi=$(jq -r .content_uri <<<"$response")
                         filename=$(basename "$FILE")
                         log "$FILE has been thumbnailed to $tmbwidth X $tmbheight, and named as $tmbname"
@@ -370,8 +373,13 @@ send_file() {
 
         #If it's a image...
         if [[ $FILE_TYPE == "m.image" ]]; then
-                data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
-                rm "/tmp/$tmbname"
+                if [ "$TEXT" = "" ]; then
+                        data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+                        rm "/tmp/$tmbname"
+																else
+																		      data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":\"$TEXT\"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+                        rm "/tmp/$tmbname"
+																								
         fi
 
         #If it's a video...
@@ -531,7 +539,7 @@ case "$ACTION" in
       [ -z "$TEXT" ] && die "No message to send."
       send_message "$TEXT"
     else
-      send_file
+      send_file "$TEXT"
     fi
     ;;
 esac
