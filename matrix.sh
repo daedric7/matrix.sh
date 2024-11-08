@@ -376,11 +376,10 @@ send_file() {
                 if [ "$TEXT" = "" ]; then
                         data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
                         rm "/tmp/$tmbname"
-																else
-																		      data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":\"$TEXT\"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+                else
+                        data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$TEXT"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
                         rm "/tmp/$tmbname"
-																fi
-																								
+                fi
         fi
 
         #If it's a video...
