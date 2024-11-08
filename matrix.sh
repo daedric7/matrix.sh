@@ -384,8 +384,13 @@ send_file() {
 
         #If it's a video...
         if [[ $FILE_TYPE == "m.video" ]]; then
-            data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"image\/jpeg\", \"size\":$tmbsize }, \"size\":$size, \"w\":$vidwidth, \"h\":$vidheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
-            rm "/tmp/$tmbname"
+								    if [ "$TEXT" = "" ]; then
+                data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"image\/jpeg\", \"size\":$tmbsize }, \"size\":$size, \"w\":$vidwidth, \"h\":$vidheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+                rm "/tmp/$tmbname"
+												else
+                data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"image\/jpeg\", \"size\":$tmbsize }, \"size\":$size, \"w\":$vidwidth, \"h\":$vidheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$TEXT"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+                rm "/tmp/$tmbname"
+												fi
         fi
 
         #Send it.
