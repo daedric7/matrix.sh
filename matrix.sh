@@ -42,10 +42,10 @@ help() {
         echo "  --notice                   Send a notice instead of a message."
         echo "  --html                     Enable HTML tags in message."
         echo "  --pre                      Wraps the given message into <pre> and escapes all other HTML special chars."
-        echo "  --file=<file>              Send <file> to the room."
-        echo "  --image                    Send the file as image."
-        echo "  --audio                    Send the file as audio."
-        echo "  --video                    Send the file as video."
+        echo "  --file=<file>              Send <file> to the room.  If <message> is provided, the file is uploaded with that name."
+        echo "  --image                    Send the file as image. If <message> is provided, it's used as a caption"
+        echo "  --audio                    Send the file as audio. If <message> is provided, it's used as a caption"
+        echo "  --video                    Send the file as video. If <message> is provided, it's used as a caption"
         echo "  --identifier=<ident>       Custom identifier for this device. Default is '`whoami`@`hostname` using matrix.sh'."
         echo
         echo "Actions marked with [*] are done interactively."
@@ -368,8 +368,11 @@ send_file() {
         uri=$(jq -r .content_uri <<<"$response")
 
         #Default data
-        data="{\"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"url\":\"$uri\", \"info\":{\"mimetype\":\"$content_type\", \"size\":$size}}"
-        echo $data
+        if [ "$TEXT" = "" ]; then
+                data="{\"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"url\":\"$uri\", \"info\":{\"mimetype\":\"$content_type\", \"size\":$size}}"
+        else
+                data="{\"body\":\"$TEXT\", \"msgtype\":\"$FILE_TYPE\", \"url\":\"$uri\", \"info\":{\"mimetype\":\"$content_type\", \"size\":$size}}"
+        fi
 
         #If it's a image...
         if [[ $FILE_TYPE == "m.image" ]]; then
@@ -394,6 +397,7 @@ send_file() {
         fi
 
         #Send it.
+        echo $data
         _send_message "$data"
 }
 
