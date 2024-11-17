@@ -291,9 +291,10 @@ send_file() {
                         tmbname="thumb-${filename}"                                                                                                             #Generate a thumbname from the filename
                         convert $FILE -thumbnail $tmbwidth\x$tmbheight -quality 70 /tmp/$tmbname                                                                #Convert the file to a thumb
                         blurhash=$(/usr/local/bin/blurhash_encoder 4 3 /tmp/$tmbname)                                                                           #Generate blurhash from thumb
-                        ffmpeg -loglevel fatal -i /tmp/$tmbname -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" /tmp/$tmbname.mp4  #Convert gif thumbnail to mp4 (for size?)
-                        tmbname=${tmbname}.mp4
-                        tmb_content_type='video/mp4'
+                        #ffmpeg -loglevel fatal -i /tmp/$tmbname -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" /tmp/$tmbname.mp4  #Convert gif thumbnail to mp4 (for size?)
+                        #tmbname=${tmbname}.mp4
+                        #tmb_content_type='video/mp4'
+                        tmb_content_type='image/gif'
                         log "Uploading thumbnail... blurhash is $blurhash, content type is $tmb_content_type"
                         upload_file "/tmp/$tmbname" "$tmb_content_type" "$tmbname"
                         tmburi=$(jq -r .content_uri <<<"$response")
