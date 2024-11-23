@@ -274,6 +274,7 @@ send_file() {
         log "filename: $filename $extension"
         content_type=$(file --brief --mime-type "$FILE")
         original_content_type=$content_type
+        is_animated="false"
 
         #Thumbnails
         if [[ $FILE_TYPE == "m.image" ]]; then
@@ -302,6 +303,7 @@ send_file() {
                         log "$FILE has been thumbnailed to $tmbwidth X $tmbheight, and named as $tmbname"
                         log "Response was: $response"
                         log "$FILE will be uploaded as $filename, it has $imgwidth X $imgheight"
+                        is_animated="true"
                 else
                         log "NOT GIF"
                         imgwidth=$(identify -format "%w" "$FILE")
@@ -378,10 +380,10 @@ send_file() {
         #If it's a image...
         if [[ $FILE_TYPE == "m.image" ]]; then
                 if [ "$TEXT" = "" ]; then
-                        data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+                        data="{\"info\":{\"mimetype\":\"$content_type\", \"org.matrix.msc4230.is_animated\": $is_animated, \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":$(escape "$filename"), \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
                         rm "/tmp/$tmbname"
                 else
-                        data="{\"info\":{\"mimetype\":\"$content_type\", \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":\"$TEXT\", \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
+                        data="{\"info\":{\"mimetype\":\"$content_type\", \"org.matrix.msc4230.is_animated\": $is_animated, \"thumbnail_info\":{\"w\":$tmbwidth, \"h\":$tmbheight, \"mimetype\":\"$tmb_content_type\", \"size\":$tmbsize }, \"size\":$size, \"w\":$imgwidth, \"h\":$imgheight, \"xyz.amorgan.blurhash\":\"$blurhash\", \"thumbnail_url\":\"$tmburi\"}, \"body\":\"$TEXT\", \"msgtype\":\"$FILE_TYPE\", \"filename\":$(escape "$filename"), \"url\":\"$uri\"}"
                         rm "/tmp/$tmbname"
                 fi
         fi
