@@ -284,25 +284,37 @@ send_file() {
                         imgwidth=$(identify -format "%w" "$FILE"[0])
                         imgheight=$(identify -format "%h" "$FILE"[0])
                         log "$imgwidth x $imgheight"
-                        tmbwidth=300
+
+                        #Thumbnails
+                        tmbwidth=800                                                            #Desired thumbnail width
                         tmbheight=$(( (imgheight * tmbwidth) / imgwidth ))
-                        tmbsize=$(( (tmbwidth * size) / imgwidth ))
-                        curdir=$(pwd)
-                        #cd /tmp
-                        tmbname="thumb-${filename}"                                                                                                             #Generate a thumbname from the filename
-                        convert $FILE -thumbnail $tmbwidth\x$tmbheight -quality 70 /tmp/$tmbname                                                                #Convert the file to a thumb
-                        blurhash=$(/usr/local/bin/blurhash_encoder 4 3 /tmp/$tmbname)                                                                           #Generate blurhash from thumb
-                        #ffmpeg -loglevel fatal -i /tmp/$tmbname -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" /tmp/$tmbname.mp4  #Convert gif thumbnail to mp4 (for size?)
-                        #tmbname=${tmbname}.mp4
-                        #tmb_content_type='video/mp4'
-                        tmb_content_type='image/gif'
+                        tmbsize=$(( (tmbwidth * size) / imgwidth ))                             #Height is calculated to keep proportion
+                        curdir=$(pwd)                                                           #Save current dir.
+                        tmbname="thumb-${filename}.png"                                         #Generate a thumbname from the filename
+                        tmb_content_type='image/png'                                            #Thumbnail content type
+
+                        # Get the total number of frames in the GIF
+                        TOTAL_FRAMES=$(identify -format "%n\n" "$FILE" | head -n 1)
+                        # Calculate the target frame index
+                        FRAME_INDEX=$(echo "$TOTAL_FRAMES * 10 / 100" | bc) #10 for 10% of the GIF
+                        FRAME_INDEX=${FRAME_INDEX%.*}  # Ensure it's an integer
+                        # Ensure FRAME_INDEX is within bounds
+                        if [ "$FRAME_INDEX" -ge "$TOTAL_FRAMES" ]; then
+                          FRAME_INDEX=$((TOTAL_FRAMES - 1))
+                        fi
+                        # Extract the frame
+                        convert "$FILE"["$FRAME_INDEX"] -quality 90 -coalesce /tmp/$tmbname
+
+                        #Calculate the blurhash for it
+                        blurhash=$(/usr/local/bin/blurhash_encoder 4 3 /tmp/$tmbname)
+
                         log "Uploading thumbnail... blurhash is $blurhash, content type is $tmb_content_type"
                         upload_file "/tmp/$tmbname" "$tmb_content_type" "$tmbname"
                         tmburi=$(jq -r .content_uri <<<"$response")
                         filename=$(basename "$FILE")
-                        log "$FILE has been thumbnailed to $tmbwidth X $tmbheight, and named as $tmbname"
-                        log "Response was: $response"
-                        log "$FILE will be uploaded as $filename, it has $imgwidth X $imgheight"
+                        #log "$FILE has been thumbnailed to $tmbwidth X $tmbheight, and named as $tmbname"
+                        #log "Response was: $response"
+                        #log "$FILE will be uploaded as $filename, it has $imgwidth X $imgheight"
                         is_animated="true"
                 else
                         log "NOT GIF"
