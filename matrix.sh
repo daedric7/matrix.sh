@@ -42,6 +42,7 @@ help() {
         echo "  --notice                   Send a notice instead of a message."
         echo "  --html                     Enable HTML tags in message."
         echo "  --pre                      Wraps the given message into <pre> and escapes all other HTML special chars."
+        echo "  --toroom                   Sends the message to the whole room, is user has permition to do so (@room is automatically added to the beggining of the message, as well as the entire room mention)"
         echo "  --file=<file>              Send <file> to the room.  If <message> is provided, the file is uploaded with that name."
         echo "  --image                    Send the file as image. If <message> is provided, it's used as a caption"
         echo "  --audio                    Send the file as audio. If <message> is provided, it's used as a caption"
@@ -232,6 +233,9 @@ send_message() {
         echo "Sending message..."
         text="$1"
         [ "$text" = "-" ] && text=$(</dev/stdin)
+        if $TOROOM; then
+            text="@room $text"
+        fi
         if $PRE; then
                 text="${text//</&lt;}"
                 text="${text//>/&gt;}"
@@ -244,9 +248,17 @@ send_message() {
         if $HTML; then
                 clean_body="${text//<+([a-zA-Z0-9\"\'= \/])>/}"
                 clean_body=`escape "$clean_body"`
-                data="{\"body\": $clean_body, \"msgtype\":\"$MESSAGE_TYPE\",\"formatted_body\":$text,\"format\":\"org.matrix.custom.html\"}"
+                if $TOROOM; then
+                    data="{\"body\": $clean_body, \"m.mentions\": {\"room\": true}, \"msgtype\":\"$MESSAGE_TYPE\",\"formatted_body\":$text,\"format\":\"org.matrix.custom.html\"}"
+                else
+                    data="{\"body\": $clean_body, \"msgtype\":\"$MESSAGE_TYPE\",\"formatted_body\":$text,\"format\":\"org.matrix.custom.html\"}"
+                fi
         else
-                data="{\"body\": $text, \"msgtype\":\"m.text\"}"
+                if $TOROOM; then
+                    data="{\"body\": $text, \"m.mentions\": {\"room\": true}, \"msgtype\":\"m.text\"}"
+                else
+                    data="{\"body\": $text, \"msgtype\":\"m.text\"}"
+                fi
         fi
         _send_message "$data"
 }
@@ -306,7 +318,7 @@ send_file() {
                         convert "$FILE"["$FRAME_INDEX"] -quality 90 -coalesce /tmp/$tmbname
 
                         #Calculate the blurhash for it
-                        blurhash=$(/usr/local/bin/blurhash_encoder 4 3 /tmp/$tmbname)
+                        blurhash=$(/usr/local/bin/blurhash_encoder 8 8 /tmp/$tmbname)
 
                         log "Uploading thumbnail... blurhash is $blurhash, content type is $tmb_content_type"
                         upload_file "/tmp/$tmbname" "$tmb_content_type" "$tmbname"
@@ -328,7 +340,7 @@ send_file() {
                         #cd /tmp
                         tmbname="thumb-${filename}"                                                                                                             #Generate a thumbname from the filename
                         convert $FILE -thumbnail $tmbwidth\x$tmbheight -quality 70 /tmp/$tmbname                                                                #Convert the file to a thumb
-                        blurhash=$(/usr/local/bin/blurhash_encoder 4 3 /tmp/$tmbname)                                                                           #Generate blurhash from thumb
+                        blurhash=$(/usr/local/bin/blurhash_encoder 8 8 /tmp/$tmbname)                                                                           #Generate blurhash from thumb
                         tmb_content_type=$content_type
                         log "Content Type: $tmb_content_type"
                         log "Uploading thumbnail... blurhash is $blurhash, content type is $tmb_content_type"
@@ -369,7 +381,7 @@ send_file() {
                 echo ffmpeg -ss $tmbduration -i "$FILE" -vframes 1 -q:v 2 /tmp/${tmbname}
                 ffmpeg -ss $tmbduration -i "$FILE" -vframes 1 -q:v 2 /tmp/${tmbname}
                 #get the blurhash from the thumbnail
-                blurhash=$(/usr/local/bin/blurhash_encoder 4 3 /tmp/$tmbname)
+                blurhash=$(/usr/local/bin/blurhash_encoder 8 8 /tmp/$tmbname)
                 #upload it
                 log "Uploading thumbnail... blurhash is $blurhash"
                 upload_file "/tmp/$tmbname" "image\/jpeg" "$tmbname"
@@ -423,6 +435,7 @@ send_file() {
 ACTION="send"
 HTML="false"
 PRE="false"
+TOROOM="false"
 FILE=""
 FILE_TYPE="m.file"
 MESSAGE_TYPE="m.text"
@@ -431,6 +444,10 @@ IDENTIFIER="`whoami`@`hostname` using matrix.sh"
 for i in "$@"; do
         case $i in
                 # Options
+                --toroom)
+                        TOROOM="true"
+                        shift
+                        ;;
                 --token=*)
                         MATRIX_TOKEN="${i#*=}"
                         shift
